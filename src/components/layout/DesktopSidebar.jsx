@@ -1,13 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { LayoutDashboard, PieChart, ShoppingBasket, Receipt, Sun, Moon, LogOut } from 'lucide-react';
+import { LayoutDashboard, PieChart, ShoppingBasket, Receipt, Sun, Moon, LogOut, Download } from 'lucide-react';
 import { toggleTheme } from '../../store/themeSlice';
 import { logout } from '../../store/authSlice';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 export default function DesktopSidebar() {
   const dispatch = useDispatch();
   const themeMode = useSelector((state) => state.theme.mode);
+  const { isInstallable, triggerInstall } = usePwaInstall();
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,6 +55,15 @@ export default function DesktopSidebar() {
       </div>
 
       <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-2.5">
+        {isInstallable && (
+          <button
+            onClick={triggerInstall}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/20 transition animate-pulse"
+          >
+            <Download className="w-4 h-4" />
+            <span>Instalar Aplicación</span>
+          </button>
+        )}
         <button
           onClick={() => dispatch(toggleTheme())}
           className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-[#1a233a] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition"

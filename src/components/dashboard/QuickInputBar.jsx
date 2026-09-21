@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { Mic, Camera, Send } from 'lucide-react';
 import { api } from '../../services/api';
-import { openConfirmModal, openScanModal, showToast } from '../../store/uiSlice';
+import { openConfirmModal, openScanModal, closeScanModal, showToast } from '../../store/uiSlice';
 import { fetchDashboard } from '../../store/financeSlice';
 import { fetchPantry } from '../../store/pantrySlice';
 
@@ -73,7 +73,7 @@ export default function QuickInputBar() {
   };
 
   const handleCameraChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     const preview = URL.createObjectURL(file);
@@ -81,13 +81,17 @@ export default function QuickInputBar() {
 
     try {
       const res = await api.scanReceipt(file);
+      dispatch(closeScanModal());
       if (res.ok && res.datos_gasto) {
         dispatch(openConfirmModal({ tipo: 'gasto', datos_gasto: res.datos_gasto }));
       } else {
-        dispatch(showToast({ message: 'No se pudo leer la factura con claridad.', icon: '⚠️' }));
+        dispatch(showToast({ message: res?.message || 'No se pudo leer la factura con claridad.', icon: '⚠️' }));
       }
     } catch {
+      dispatch(closeScanModal());
       dispatch(showToast({ message: 'Error analizando recibo.', icon: '❌' }));
+    } finally {
+      if (e.target) e.target.value = '';
     }
   };
 

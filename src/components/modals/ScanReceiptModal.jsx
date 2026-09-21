@@ -1,15 +1,24 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
-import { ScanLine } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { ScanLine, X } from 'lucide-react';
+import { closeScanModal } from '../../store/uiSlice';
 
 export default function ScanReceiptModal() {
+  const dispatch = useDispatch();
   const { isOpen, previewUrl } = useSelector((state) => state.ui.scanModal);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 glass flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+      <div className="bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center relative">
+        <button
+          onClick={() => dispatch(closeScanModal())}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-800/40 transition"
+          title="Cerrar"
+        >
+          <X className="w-5 h-5" />
+        </button>
         <div className="w-12 h-12 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center mx-auto border border-purple-500/30">
           <ScanLine className="w-6 h-6" />
         </div>
