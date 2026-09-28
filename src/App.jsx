@@ -7,6 +7,7 @@ import PinLockModal from './components/auth/PinLockModal';
 import ConfirmTransactionModal from './components/modals/ConfirmTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
 import ScanReceiptModal from './components/modals/ScanReceiptModal';
+import ManageFundsModal from './components/modals/ManageFundsModal';
 import Toast from './components/common/Toast';
 import AppRoutes from './routes/AppRoutes';
 import { fetchInitialFinanceData } from './store/financeSlice';
@@ -30,7 +31,7 @@ export default function App() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row min-h-screen">
         <DesktopSidebar />
 
-        <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-28 md:pb-8">
+        <main className="flex-1 p-3 md:p-6 max-w-5xl mx-auto w-full pb-28 md:pb-8 transition-all">
           <Header />
           <AppRoutes />
         </main>
@@ -41,6 +42,7 @@ export default function App() {
       <ConfirmTransactionModal />
       <EditTransactionModal />
       <ScanReceiptModal />
+      <ManageFundsModal />
       <Toast />
     </div>
   );

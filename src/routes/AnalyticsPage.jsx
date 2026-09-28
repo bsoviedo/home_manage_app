@@ -5,6 +5,7 @@ import CategoryDonutChart from '../components/analytics/CategoryDonutChart';
 import FundsBarChart from '../components/analytics/FundsBarChart';
 import CategoryDrilldownView from '../components/analytics/CategoryDrilldownView';
 import CategoryCompareView from '../components/analytics/CategoryCompareView';
+import WeekdayExpensesChart from '../components/analytics/WeekdayExpensesChart';
 import { fetchAnalytics } from '../store/financeSlice';
 
 export default function AnalyticsPage() {
@@ -201,6 +202,12 @@ export default function AnalyticsPage() {
           )}
         </div>
       </div>
+
+      {/* Weekday Expenses Analysis */}
+      <WeekdayExpensesChart
+        weekdayData={analytics?.por_dia_semana}
+        peakDay={analytics?.dia_mayor_gasto}
+      />
     </div>
   );
 }

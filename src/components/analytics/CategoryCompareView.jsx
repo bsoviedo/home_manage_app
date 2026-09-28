@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { ArrowLeft, BarChart2, Wallet, Receipt, Loader2, Pencil, Layers } from 'lucide-react';
+import { ArrowLeft, BarChart2, Wallet, Receipt, Loader2, Pencil, Columns } from 'lucide-react';
 import { api } from '../../services/api';
 import { openEditModal } from '../../store/uiSlice';
 
@@ -20,8 +20,7 @@ export default function CategoryCompareView({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [offset, setOffset] = useState(0);
-  const scrollRef = useRef(null);
-  const limit = 20;
+  const limit = 50;
 
   const palette = ['#10b981', '#8b5cf6', '#3b82f6', '#f59e0b', '#ec4899', '#06b6d4', '#64748b', '#f97316', '#14b8a6', '#a855f7'];
 
@@ -88,13 +87,6 @@ export default function CategoryCompareView({
     }
   };
 
-  const handleScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight < 60 && hasMore && !loadingMore) {
-      loadMoreTransactions();
-    }
-  };
-
   const formatCOP = (val) => '$' + Number(val || 0).toLocaleString('es-CO') + ' COP';
 
   if (loading) {
@@ -120,8 +112,26 @@ export default function CategoryCompareView({
   const fondosMap = compareData.por_fondo_combinado || {};
   const totalCount = compareData.total_transacciones || compareData.cantidad_total || 0;
 
+  // Group transactions by category for parallel rendering
+  const txsByCat = {};
+  categoryIds.forEach((cid) => {
+    txsByCat[cid.toLowerCase()] = [];
+  });
+  transactions.forEach((t) => {
+    const cKey = String(t.id_categoria || '').toLowerCase();
+    if (txsByCat[cKey]) {
+      txsByCat[cKey].push(t);
+    } else {
+      // Find approximate match
+      const matched = Object.keys(txsByCat).find((k) => cKey.includes(k) || k.includes(cKey));
+      if (matched) {
+        txsByCat[matched].push(t);
+      }
+    }
+  });
+
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
+    <div className="space-y-5 animate-in fade-in duration-200">
       {/* Header & Back button */}
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div className="flex items-center space-x-2.5">
@@ -223,92 +233,98 @@ export default function CategoryCompareView({
         </div>
       </div>
 
-      {/* Transactions list with Infinite Scroll */}
+      {/* PARALLEL (SIDE-BY-SIDE) TRANSACTION COLUMNS */}
       <div>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
-            <Receipt className="w-3.5 h-3.5 text-purple-400" />
-            <span>Movimientos ({transactions.length} de {totalCount})</span>
+            <Columns className="w-3.5 h-3.5 text-purple-400" />
+            <span>Transacciones en Paralelo ({transactions.length} de {totalCount})</span>
           </h4>
-          {hasMore && (
-            <span className="text-[10px] text-purple-400 font-medium">Scroll para cargar más</span>
-          )}
         </div>
 
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="max-h-56 overflow-y-auto space-y-1.5 pr-1"
-        >
-          {transactions.length === 0 ? (
-            <p className="text-xs text-slate-400 py-4 text-center">No hay movimientos en este periodo.</p>
-          ) : (
-            transactions.map((t) => {
-              const hasSplit = t.monto_terceros > 0;
-              const catObj = categoriesMap[t.id_categoria?.toLowerCase()];
-              const catName = catObj?.nombre || t.id_categoria;
-              return (
-                <div
-                  key={t.id}
-                  className="p-2.5 bg-slate-50 dark:bg-[#0b0f19] rounded-xl border border-slate-200 dark:border-slate-800/60 flex items-center justify-between text-xs hover:border-slate-300 dark:hover:border-slate-700 transition"
-                >
-                  <div className="truncate mr-2 flex-1">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">{t.descripcion}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded font-medium truncate max-w-[100px]">
-                        {catName}
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5 flex items-center space-x-1.5">
-                      <span>{t.fecha?.substring(0, 10)}</span>
-                      {hasSplit && (
-                        <span className="px-1.5 py-0.2 bg-purple-500/20 text-purple-300 rounded text-[9px]">
-                          Dividido
-                        </span>
-                      )}
-                    </div>
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.entries(categoriesMap).map(([cid, data], idx) => {
+            const catTxs = txsByCat[cid.toLowerCase()] || [];
+            const color = palette[idx % palette.length];
 
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                    <div className="text-right">
-                      <div className="font-bold text-rose-500 dark:text-rose-400">
-                        -{formatCOP(t.monto)}
-                      </div>
-                      {hasSplit && (
-                        <div className="text-[9px] text-slate-400">
-                          Mío: {formatCOP(t.monto_propio)}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => dispatch(openEditModal({ txId: t.id }))}
-                      className="p-1 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition"
-                      title="Editar transacción"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+            return (
+              <div
+                key={cid}
+                className="bg-slate-50/70 dark:bg-[#0b0f19] rounded-2xl border border-slate-200 dark:border-slate-800 p-3 space-y-2.5 flex flex-col justify-between"
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-800">
+                  <div className="flex items-center space-x-1.5 truncate">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">{data.nombre}</span>
                   </div>
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{formatCOP(data.total)}</span>
                 </div>
-              );
-            })
-          )}
 
-          {loadingMore && (
-            <div className="py-2 flex items-center justify-center space-x-2 text-xs text-slate-400">
-              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-              <span>Cargando más movimientos...</span>
-            </div>
-          )}
+                {/* Column Transaction List */}
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 flex-1">
+                  {catTxs.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 py-6 text-center">Sin movimientos.</p>
+                  ) : (
+                    catTxs.map((t) => {
+                      const hasSplit = t.monto_terceros > 0;
+                      return (
+                        <div
+                          key={t.id}
+                          className="p-2 bg-white dark:bg-[#131b2e] rounded-xl border border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between text-xs hover:border-slate-300 dark:hover:border-slate-700 transition"
+                        >
+                          <div className="truncate mr-1.5 flex-1">
+                            <div className="font-semibold text-slate-900 dark:text-slate-100 truncate text-[11px]">
+                              {t.descripcion}
+                            </div>
+                            <div className="text-[9px] text-slate-400 flex items-center space-x-1 mt-0.5">
+                              <span>{t.fecha?.substring(0, 10)}</span>
+                              {hasSplit && (
+                                <span className="px-1 py-0.2 bg-purple-500/20 text-purple-300 rounded text-[8px]">
+                                  Dividido
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
-          {hasMore && !loadingMore && (
-            <button
-              onClick={loadMoreTransactions}
-              className="w-full py-1.5 mt-1 text-[11px] font-semibold text-purple-400 hover:bg-purple-500/10 rounded-xl border border-purple-500/20 transition text-center"
-            >
-              + Cargar más transacciones
-            </button>
-          )}
+                          <div className="flex items-center space-x-1.5 flex-shrink-0">
+                            <span className="font-bold text-[11px] text-rose-500 dark:text-rose-400">
+                              -{formatCOP(t.monto)}
+                            </span>
+                            <button
+                              onClick={() => dispatch(openEditModal({ txId: t.id }))}
+                              className="p-1 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition"
+                              title="Editar transacción"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
+
+        {hasMore && (
+          <button
+            onClick={loadMoreTransactions}
+            disabled={loadingMore}
+            className="w-full py-2 mt-3 text-xs font-semibold text-purple-400 hover:bg-purple-500/10 rounded-xl border border-purple-500/20 transition text-center flex items-center justify-center space-x-1.5"
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Cargando más movimientos...</span>
+              </>
+            ) : (
+              <span>+ Cargar más transacciones en paralelo</span>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -17,6 +17,11 @@ const uiSlice = createSlice({
       previewUrl: '',
       isScanning: false
     },
+    fundsModal: {
+      isOpen: false,
+      activeTab: 'recharge', // 'recharge' | 'baseline'
+      selectedFundId: null
+    },
     toast: {
       show: false,
       message: '',
@@ -52,6 +57,15 @@ const uiSlice = createSlice({
       state.scanModal.previewUrl = '';
       state.scanModal.isScanning = false;
     },
+    openFundsModal(state, action) {
+      state.fundsModal.isOpen = true;
+      state.fundsModal.activeTab = action.payload?.activeTab || 'recharge';
+      state.fundsModal.selectedFundId = action.payload?.selectedFundId || null;
+    },
+    closeFundsModal(state) {
+      state.fundsModal.isOpen = false;
+      state.fundsModal.selectedFundId = null;
+    },
     showToast(state, action) {
       state.toast = {
         show: true,
@@ -72,6 +86,8 @@ export const {
   closeEditModal,
   openScanModal,
   closeScanModal,
+  openFundsModal,
+  closeFundsModal,
   showToast,
   hideToast
 } = uiSlice.actions;

@@ -26,6 +26,24 @@ export const api = {
     return res.json();
   },
 
+  async setFundBaseline(fundId, saldoInicial) {
+    const res = await fetch(`${API_BASE}/funds/${fundId}/baseline`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ saldo_inicial: Number(saldoInicial) })
+    });
+    return res.json();
+  },
+
+  async rechargeFund(fundId, data) {
+    const res = await fetch(`${API_BASE}/funds/${fundId}/recharge`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
   async getCategories(tipo = 'gasto') {
     const res = await fetch(`${API_BASE}/categories?tipo=${tipo}`, { headers: getHeaders() });
     return res.json();
