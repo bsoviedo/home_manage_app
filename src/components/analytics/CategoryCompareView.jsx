@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { ArrowLeft, Wallet, Receipt, Loader2, Pencil } from 'lucide-react';
+import { ArrowLeft, BarChart2, Wallet, Receipt, Loader2, Pencil, Layers } from 'lucide-react';
 import { api } from '../../services/api';
 import { openEditModal } from '../../store/uiSlice';
 
-export default function CategoryDrilldownView({
-  categoryId,
+export default function CategoryCompareView({
+  categoryIds = [],
+  categoryLabels = [],
   period,
   startDate,
   endDate,
@@ -13,7 +14,7 @@ export default function CategoryDrilldownView({
   totalPeriodExpenses
 }) {
   const dispatch = useDispatch();
-  const [drillData, setDrillData] = useState(null);
+  const [compareData, setCompareData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -22,25 +23,29 @@ export default function CategoryDrilldownView({
   const scrollRef = useRef(null);
   const limit = 20;
 
+  const palette = ['#10b981', '#8b5cf6', '#3b82f6', '#f59e0b', '#ec4899', '#06b6d4', '#64748b', '#f97316', '#14b8a6', '#a855f7'];
+
   const fetchInitialData = useCallback(async () => {
-    if (!categoryId) return;
+    if (!categoryIds || categoryIds.length === 0) return;
     setLoading(true);
     setOffset(0);
     try {
-      const params = {};
+      const payload = {
+        category_ids: categoryIds,
+        offset: 0,
+        limit
+      };
       if (startDate && endDate) {
-        params.fecha_inicio = startDate;
-        params.fecha_fin = endDate;
+        payload.fecha_inicio = startDate;
+        payload.fecha_fin = endDate;
       } else {
-        params.period = period || 'month';
+        payload.period = period || 'month';
       }
-      params.offset = 0;
-      params.limit = limit;
 
-      const res = await api.getCategoryDrilldown(categoryId, params);
+      const res = await api.compareCategories(payload);
       setLoading(false);
       if (res.ok) {
-        setDrillData(res);
+        setCompareData(res);
         setTransactions(res.transacciones || []);
         setHasMore(res.has_more || false);
         setOffset(res.transacciones?.length || 0);
@@ -48,7 +53,7 @@ export default function CategoryDrilldownView({
     } catch {
       setLoading(false);
     }
-  }, [categoryId, period, startDate, endDate]);
+  }, [categoryIds, period, startDate, endDate]);
 
   useEffect(() => {
     fetchInitialData();
@@ -58,17 +63,19 @@ export default function CategoryDrilldownView({
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const params = {};
+      const payload = {
+        category_ids: categoryIds,
+        offset,
+        limit
+      };
       if (startDate && endDate) {
-        params.fecha_inicio = startDate;
-        params.fecha_fin = endDate;
+        payload.fecha_inicio = startDate;
+        payload.fecha_fin = endDate;
       } else {
-        params.period = period || 'month';
+        payload.period = period || 'month';
       }
-      params.offset = offset;
-      params.limit = limit;
 
-      const res = await api.getCategoryDrilldown(categoryId, params);
+      const res = await api.compareCategories(payload);
       setLoadingMore(false);
       if (res.ok) {
         const newTxs = res.transacciones || [];
@@ -93,25 +100,25 @@ export default function CategoryDrilldownView({
   if (loading) {
     return (
       <div className="h-64 flex flex-col items-center justify-center space-y-2 text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-        <span className="text-xs">Cargando desglose de categoría...</span>
+        <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+        <span className="text-xs">Cargando comparativa de categorías...</span>
       </div>
     );
   }
 
-  if (!drillData) {
+  if (!compareData) {
     return (
       <div className="text-center py-8 text-xs text-slate-400">
-        No se pudo cargar el desglose.
-        <button onClick={onBack} className="block mx-auto mt-2 text-emerald-400 underline">Volver</button>
+        No se pudo cargar la comparativa.
+        <button onClick={onBack} className="block mx-auto mt-2 text-purple-400 underline">Volver</button>
       </div>
     );
   }
 
-  const catTotal = drillData.total || 0;
-  const percentage = totalPeriodExpenses > 0 ? ((catTotal / totalPeriodExpenses) * 100).toFixed(0) : 0;
-  const fondosMap = drillData.por_fondo || {};
-  const totalCount = drillData.total_transacciones || drillData.cantidad || 0;
+  const combinedTotal = compareData.total_combinado || 0;
+  const categoriesMap = compareData.categorias || {};
+  const fondosMap = compareData.por_fondo_combinado || {};
+  const totalCount = compareData.total_transacciones || compareData.cantidad_total || 0;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -120,43 +127,85 @@ export default function CategoryDrilldownView({
         <div className="flex items-center space-x-2.5">
           <button
             onClick={onBack}
-            className="p-1.5 rounded-xl bg-slate-100 dark:bg-[#0b0f19] text-slate-600 dark:text-slate-300 hover:bg-emerald-500 hover:text-white transition"
+            className="p-1.5 rounded-xl bg-slate-100 dark:bg-[#0b0f19] text-slate-600 dark:text-slate-300 hover:bg-purple-500 hover:text-white transition"
             title="Volver a la vista general"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
             <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center space-x-2">
-              <span>{drillData.categoria_nombre}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold">
-                {percentage}% del total
+              <span>Comparativa ({categoryIds.length} Categorías)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-bold">
+                {totalPeriodExpenses > 0 ? ((combinedTotal / totalPeriodExpenses) * 100).toFixed(0) : 0}% del total global
               </span>
             </h3>
-            <p className="text-[10px] text-slate-400">{totalCount} movimientos en el periodo</p>
+            <p className="text-[10px] text-slate-400">{totalCount} movimientos sumados en el periodo</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-sm font-bold text-emerald-500 dark:text-emerald-400">{formatCOP(catTotal)}</div>
-          {drillData.total_terceros > 0 && (
+          <div className="text-sm font-bold text-purple-500 dark:text-purple-400">{formatCOP(combinedTotal)}</div>
+          {compareData.total_terceros > 0 && (
             <div className="text-[9px] text-slate-400">
-              Propio: {formatCOP(drillData.total_propio)}
+              Propio: {formatCOP(compareData.total_propio)}
             </div>
           )}
         </div>
       </div>
 
-      {/* Funds Breakdown for this category */}
+      {/* Comparative Cards & Percentage Distribution */}
       <div>
         <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
-          <Wallet className="w-3.5 h-3.5 text-purple-400" />
-          <span>¿De qué fondos se pagó?</span>
+          <BarChart2 className="w-3.5 h-3.5 text-purple-400" />
+          <span>Distribución entre Categorías Seleccionadas</span>
+        </h4>
+        <div className="space-y-2">
+          {Object.entries(categoriesMap).map(([cid, data], idx) => {
+            const catPct = combinedTotal > 0 ? ((data.total / combinedTotal) * 100).toFixed(1) : '0.0';
+            const color = palette[idx % palette.length];
+            return (
+              <div
+                key={cid}
+                className="p-2.5 bg-slate-50 dark:bg-[#0b0f19] rounded-xl border border-slate-200 dark:border-slate-800 space-y-1.5"
+              >
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center space-x-2 truncate">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="font-bold text-slate-900 dark:text-slate-100 truncate">{data.nombre}</span>
+                    <span className="text-[10px] text-slate-400">({data.cantidad} compras)</span>
+                  </div>
+                  <div className="text-right flex items-center space-x-2 flex-shrink-0">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{formatCOP(data.total)}</span>
+                    <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md">
+                      {catPct}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Relative progress bar */}
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${catPct}%`, backgroundColor: color }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Funds Breakdown for the compared categories */}
+      <div>
+        <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+          <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Fondos Utilizados (Combinado)</span>
         </h4>
         <div className="grid grid-cols-2 gap-2">
           {Object.keys(fondosMap).length === 0 ? (
             <p className="text-xs text-slate-400 col-span-2">Sin desglose de fondos registrado.</p>
           ) : (
             Object.entries(fondosMap).map(([fondoNom, monto]) => {
-              const fundPct = catTotal > 0 ? ((monto / catTotal) * 100).toFixed(0) : 0;
+              const fundPct = combinedTotal > 0 ? ((monto / combinedTotal) * 100).toFixed(0) : 0;
               return (
                 <div
                   key={fondoNom}
@@ -164,7 +213,7 @@ export default function CategoryDrilldownView({
                 >
                   <div className="flex items-center justify-between text-[11px] font-medium text-slate-400">
                     <span className="truncate mr-1">{fondoNom}</span>
-                    <span className="font-bold text-purple-400">{fundPct}%</span>
+                    <span className="font-bold text-emerald-400">{fundPct}%</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900 dark:text-slate-100 mt-1">{formatCOP(monto)}</span>
                 </div>
@@ -174,35 +223,42 @@ export default function CategoryDrilldownView({
         </div>
       </div>
 
-      {/* Transactions in this Category with Infinite Scroll */}
+      {/* Transactions list with Infinite Scroll */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
-            <Receipt className="w-3.5 h-3.5 text-emerald-400" />
+            <Receipt className="w-3.5 h-3.5 text-purple-400" />
             <span>Movimientos ({transactions.length} de {totalCount})</span>
           </h4>
           {hasMore && (
-            <span className="text-[10px] text-emerald-400 font-medium">Scroll para cargar más</span>
+            <span className="text-[10px] text-purple-400 font-medium">Scroll para cargar más</span>
           )}
         </div>
 
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="max-h-60 overflow-y-auto space-y-1.5 pr-1"
+          className="max-h-56 overflow-y-auto space-y-1.5 pr-1"
         >
           {transactions.length === 0 ? (
             <p className="text-xs text-slate-400 py-4 text-center">No hay movimientos en este periodo.</p>
           ) : (
             transactions.map((t) => {
               const hasSplit = t.monto_terceros > 0;
+              const catObj = categoriesMap[t.id_categoria?.toLowerCase()];
+              const catName = catObj?.nombre || t.id_categoria;
               return (
                 <div
                   key={t.id}
                   className="p-2.5 bg-slate-50 dark:bg-[#0b0f19] rounded-xl border border-slate-200 dark:border-slate-800/60 flex items-center justify-between text-xs hover:border-slate-300 dark:hover:border-slate-700 transition"
                 >
                   <div className="truncate mr-2 flex-1">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{t.descripcion}</div>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">{t.descripcion}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded font-medium truncate max-w-[100px]">
+                        {catName}
+                      </span>
+                    </div>
                     <div className="text-[10px] text-slate-400 mt-0.5 flex items-center space-x-1.5">
                       <span>{t.fecha?.substring(0, 10)}</span>
                       {hasSplit && (
@@ -226,7 +282,7 @@ export default function CategoryDrilldownView({
                     </div>
                     <button
                       onClick={() => dispatch(openEditModal({ txId: t.id }))}
-                      className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition"
+                      className="p-1 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 transition"
                       title="Editar transacción"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -239,7 +295,7 @@ export default function CategoryDrilldownView({
 
           {loadingMore && (
             <div className="py-2 flex items-center justify-center space-x-2 text-xs text-slate-400">
-              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
               <span>Cargando más movimientos...</span>
             </div>
           )}
@@ -247,7 +303,7 @@ export default function CategoryDrilldownView({
           {hasMore && !loadingMore && (
             <button
               onClick={loadMoreTransactions}
-              className="w-full py-1.5 mt-1 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/10 rounded-xl border border-emerald-500/20 transition text-center"
+              className="w-full py-1.5 mt-1 text-[11px] font-semibold text-purple-400 hover:bg-purple-500/10 rounded-xl border border-purple-500/20 transition text-center"
             >
               + Cargar más transacciones
             </button>

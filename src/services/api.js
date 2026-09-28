@@ -37,13 +37,28 @@ export const api = {
     return res.json();
   },
 
-  async getAnalytics(period = 'month') {
-    const res = await fetch(`${API_BASE}/analytics?period=${period}`, { headers: getHeaders() });
+  async getAnalytics(params = 'month') {
+    const query = typeof params === 'string'
+      ? `period=${params}`
+      : new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/analytics?${query}`, { headers: getHeaders() });
     return res.json();
   },
 
-  async getCategoryDrilldown(categoryId, period = 'month') {
-    const res = await fetch(`${API_BASE}/analytics/category/${categoryId}?period=${period}`, { headers: getHeaders() });
+  async getCategoryDrilldown(categoryId, params = 'month') {
+    const query = typeof params === 'string'
+      ? `period=${params}`
+      : new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/analytics/category/${categoryId}?${query}`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async compareCategories(data) {
+    const res = await fetch(`${API_BASE}/analytics/compare`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
     return res.json();
   },
 
