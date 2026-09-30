@@ -35,8 +35,7 @@ export default function FundsPills({ funds = [], resumen = {} }) {
           const g = (r.por_fondo_gasto && r.por_fondo_gasto[f.id]) || 0;
           const i = (r.por_fondo_ingreso && r.por_fondo_ingreso[f.id]) || 0;
           const sIni = f.saldo_inicial || 0;
-          const rec = f.recargas || 0;
-          const saldoDisp = calc?.saldo_actual !== undefined ? calc.saldo_actual : (sIni + rec + i - g);
+          const saldoDisp = calc?.saldo_actual !== undefined ? calc.saldo_actual : (i - g);
 
           return (
             <div
@@ -61,7 +60,7 @@ export default function FundsPills({ funds = [], resumen = {} }) {
               </div>
 
               <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-                <span>Base: {formatCOP(sIni + rec).replace(' COP', '')}</span>
+                <span className="text-emerald-400 font-medium">Ingresos: +{formatCOP(i).replace(' COP', '')}</span>
                 <span className="text-rose-400 font-medium">Gasto: -{formatCOP(g).replace(' COP', '')}</span>
               </div>
             </div>

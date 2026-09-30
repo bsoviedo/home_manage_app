@@ -16,8 +16,10 @@ export default function ConfirmTransactionModal() {
   const [date, setDate] = useState(new Date().toISOString().substring(0, 10));
   const [selectedFund, setSelectedFund] = useState('personal');
   const [categoryId, setCategoryId] = useState('');
+  const [isLoan, setIsLoan] = useState(false);
   const [thirdAmount, setThirdAmount] = useState(0);
   const [ownAmount, setOwnAmount] = useState(0);
+  const [lenderNote, setLenderNote] = useState('');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -32,16 +34,20 @@ export default function ConfirmTransactionModal() {
       setDate(raw.fecha || new Date().toISOString().substring(0, 10));
 
       const initialFund = raw.fondo_sugerido || (isIncome ? raw.fondo_destino : 'personal') || 'personal';
-      const isSplit = raw.monto_terceros > 0 && raw.monto_propio > 0;
+      const hasBorrowed = raw.monto_terceros > 0 && raw.monto_propio > 0;
 
-      if (isSplit) {
-        setSelectedFund('split');
+      setSelectedFund(initialFund === 'split' ? 'personal' : initialFund);
+
+      if (hasBorrowed) {
+        setIsLoan(true);
         setThirdAmount(raw.monto_terceros || 0);
         setOwnAmount(raw.monto_propio || 0);
+        setLenderNote(raw.nota_encargo || '');
       } else {
-        setSelectedFund(initialFund);
+        setIsLoan(false);
         setThirdAmount(0);
         setOwnAmount(t);
+        setLenderNote('');
       }
 
       const catList = isIncome ? categoriesIncome : categoriesExpense;
@@ -67,9 +73,25 @@ export default function ConfirmTransactionModal() {
   const handleTotalChange = (val) => {
     const newTotal = parseFloat(val || 0);
     setTotal(newTotal);
-    if (selectedFund === 'split') {
+    if (isLoan) {
       const own = Math.max(0, newTotal - thirdAmount);
       setOwnAmount(own);
+    } else {
+      setOwnAmount(newTotal);
+    }
+  };
+
+  const handleToggleLoan = () => {
+    const nextState = !isLoan;
+    setIsLoan(nextState);
+    if (nextState) {
+      // Default: half or 0
+      const half = Math.round(total / 2);
+      setThirdAmount(half);
+      setOwnAmount(total - half);
+    } else {
+      setThirdAmount(0);
+      setOwnAmount(total);
     }
   };
 
@@ -110,7 +132,7 @@ export default function ConfirmTransactionModal() {
     const sum = items.reduce((acc, it) => acc + (parseFloat(it.precio) || 0), 0);
     if (sum > 0) {
       setTotal(sum);
-      if (selectedFund === 'split') {
+      if (isLoan) {
         const own = Math.max(0, sum - thirdAmount);
         setOwnAmount(own);
       } else {
@@ -126,24 +148,24 @@ export default function ConfirmTransactionModal() {
     let montoTerceros = 0;
     let desgloseFondos = null;
 
-    if (selectedFund === 'split') {
+    if (isLoan) {
       montoTerceros = thirdAmount;
       montoPropio = ownAmount;
       desgloseFondos = [
-        { id_fondo: 'padres_terceros', monto: montoTerceros },
-        { id_fondo: 'personal', monto: montoPropio },
+        { id_fondo: 'prestamo_deuda', monto: montoTerceros, prestamista: lenderNote },
+        { id_fondo: selectedFund, monto: montoPropio },
       ];
-    } else if (selectedFund === 'padres_terceros' || selectedFund === 'conjunto') {
+    } else if (selectedFund === 'padres_terceros') {
       montoPropio = 0;
       montoTerceros = total;
     }
 
     const payload = {
       tipo: isIncome ? 'ingreso' : 'gasto',
-      descripcion: concept,
+      descripcion: concept + (isLoan && lenderNote ? ` (Préstamo: ${lenderNote})` : ''),
       monto: total,
       fecha: date,
-      id_fondo: selectedFund === 'split' ? 'padres_terceros' : selectedFund,
+      id_fondo: selectedFund,
       id_categoria: categoryId || 'general',
       monto_propio: montoPropio,
       monto_terceros: montoTerceros,
@@ -236,62 +258,100 @@ export default function ConfirmTransactionModal() {
                   {f.nombre.split(' ')[0]} {f.nombre.split(' ')[1] || ''}
                 </button>
               ))}
-              {!isIncome && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedFund('split');
-                    setOwnAmount(total - thirdAmount);
-                  }}
-                  className={`px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-center col-span-3 ${
-                    selectedFund === 'split'
-                      ? 'bg-purple-500 text-white border-purple-500'
-                      : 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/20 text-purple-600 dark:text-purple-400'
-                  }`}
-                >
-                  🍕 Pago Dividido / Mixto
-                </button>
-              )}
             </div>
           </div>
 
-          {/* Split Section */}
-          {selectedFund === 'split' && (
-            <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl space-y-2">
-              <div className="flex items-center justify-between font-bold text-purple-400">
-                <span>🍕 Desglose de Fondos</span>
-                <span>Mío: ${Number(ownAmount).toLocaleString()}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-slate-400">Aporte Terceros</label>
-                  <input
-                    type="number"
-                    value={thirdAmount}
-                    onChange={(e) => handleThirdChange(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-2 py-1 text-xs"
+          {/* FLUID SWITCH: BORROWED MONEY / LOAN SPLIT */}
+          {!isIncome && (
+            <div className="p-3.5 bg-slate-50 dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 transition">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none"
+                onClick={handleToggleLoan}
+              >
+                <div className="flex items-center space-x-2.5">
+                  <span className="text-base">🤝</span>
+                  <div>
+                    <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                      ¿Te prestaron dinero para este pago?
+                    </span>
+                    <p className="text-[10px] text-slate-400">
+                      Divide el pago para no descontar todo de tu cuenta
+                    </p>
+                  </div>
+                </div>
+
+                {/* Switch Graphic */}
+                <div
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out ${
+                    isLoan ? 'bg-purple-500' : 'bg-slate-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition duration-200 ease-in-out ${
+                      isLoan ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
                 </div>
-                <div>
-                  <label className="text-[10px] text-slate-400">Aporte Propio</label>
-                  <input
-                    type="number"
-                    value={ownAmount}
-                    onChange={(e) => handleOwnChange(e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg px-2 py-1 text-xs"
-                  />
-                </div>
               </div>
+
+              {/* Unfolded Split Fields */}
+              {isLoan && (
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800/80 space-y-3 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-purple-400 mb-1">
+                        🤝 Me Prestaron (Deuda)
+                      </label>
+                      <input
+                        type="number"
+                        value={thirdAmount}
+                        onChange={(e) => handleThirdChange(e.target.value)}
+                        className="w-full bg-white dark:bg-[#131b2e] border border-purple-500/40 rounded-xl px-2.5 py-1.5 text-xs font-bold text-purple-400 focus:outline-none focus:border-purple-500"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-emerald-400 mb-1">
+                        💰 De Mi Saldo Real
+                      </label>
+                      <input
+                        type="number"
+                        value={ownAmount}
+                        onChange={(e) => handleOwnChange(e.target.value)}
+                        className="w-full bg-white dark:bg-[#131b2e] border border-emerald-500/40 rounded-xl px-2.5 py-1.5 text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">
+                      Prestamista / Nota de la Deuda (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Me prestó Cami / Papás / Amigo"
+                      value={lenderNote}
+                      onChange={(e) => setLenderNote(e.target.value)}
+                      className="w-full bg-white dark:bg-[#131b2e] border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-purple-400"
+                    />
+                  </div>
+
+                  <div className="text-[10px] text-slate-400 bg-purple-500/10 p-2.5 rounded-xl border border-purple-500/20 leading-relaxed">
+                    💡 <span className="font-semibold text-purple-300">Resumen:</span> De tu saldo solo saldrán <strong className="text-emerald-400">${Number(ownAmount).toLocaleString()}</strong>. Los <strong className="text-purple-400">${Number(thirdAmount).toLocaleString()}</strong> prestados no te descontarán saldo en este momento.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Category */}
           <div>
-            <label className="block text-slate-400 mb-1.5">Categoría</label>
+            <label className="block text-slate-400 mb-1.5">Categoría del Gasto</label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:outline-none"
+              className="w-full bg-slate-50 dark:bg-[#0b0f19] border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
             >
               {catList.map((c) => (
                 <option key={c.id} value={c.id}>
