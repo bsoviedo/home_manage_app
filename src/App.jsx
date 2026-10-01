@@ -7,7 +7,6 @@ import PinLockModal from './components/auth/PinLockModal';
 import ConfirmTransactionModal from './components/modals/ConfirmTransactionModal';
 import EditTransactionModal from './components/modals/EditTransactionModal';
 import ScanReceiptModal from './components/modals/ScanReceiptModal';
-import ManageFundsModal from './components/modals/ManageFundsModal';
 import Toast from './components/common/Toast';
 import AppRoutes from './routes/AppRoutes';
 import { fetchInitialFinanceData } from './store/financeSlice';
@@ -42,7 +41,6 @@ export default function App() {
       <ConfirmTransactionModal />
       <EditTransactionModal />
       <ScanReceiptModal />
-      <ManageFundsModal />
       <Toast />
     </div>
   );

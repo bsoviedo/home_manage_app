@@ -34,7 +34,7 @@ export default function WeekdayExpensesChart({ weekdayData, peakDay }) {
             <div key={d} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-1.5">
-                  <span className={ont-semibold }>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
                     {d}
                   </span>
                   {isPeak && (

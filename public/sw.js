@@ -37,8 +37,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass API requests - always live from network
-  if (url.pathname.includes('/api/') || event.request.method !== 'GET') {
+  // Bypass chrome-extension, non-http, API requests, and non-GET requests
+  if (!url.protocol.startsWith('http') || url.pathname.includes('/api/') || event.request.method !== 'GET') {
     return;
   }
 
