@@ -44,6 +44,15 @@ export const api = {
     return res.json();
   },
 
+  async resetFundCycle(fundId, data) {
+    const res = await fetch(`${API_BASE}/funds/${fundId}/reset-cycle`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
   async getCategories(tipo = 'gasto') {
     const res = await fetch(`${API_BASE}/categories?tipo=${tipo}`, { headers: getHeaders() });
     return res.json();
