@@ -161,5 +161,34 @@ export const api = {
       body: JSON.stringify({ id_item, estado })
     });
     return res.json();
+  },
+
+  // Financial Calendar & Payment Dates
+  async getCalendarMonth(year, month) {
+    const query = year && month ? `?year=${year}&month=${month}` : '';
+    const res = await fetch(`${API_BASE}/calendar/month${query}`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async getCalendarEvents() {
+    const res = await fetch(`${API_BASE}/calendar/events`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  async saveCalendarEvent(eventData) {
+    const res = await fetch(`${API_BASE}/calendar/events`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(eventData)
+    });
+    return res.json();
+  },
+
+  async deleteCalendarEvent(eventId) {
+    const res = await fetch(`${API_BASE}/calendar/events/${eventId}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return res.json();
   }
 };

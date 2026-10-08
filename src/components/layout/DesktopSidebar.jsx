@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   LayoutDashboard,
+  Calendar,
   PieChart,
   ShoppingBasket,
   Receipt,
@@ -38,6 +39,7 @@ export default function DesktopSidebar() {
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/calendar', label: 'Calendario & Pagos', icon: Calendar },
     { to: '/analytics', label: 'Gráficas & Analítica', icon: PieChart },
     { to: '/pantry', label: 'Mi Despensa (FIFO)', icon: ShoppingBasket },
     { to: '/history', label: 'Historial Completo', icon: Receipt },

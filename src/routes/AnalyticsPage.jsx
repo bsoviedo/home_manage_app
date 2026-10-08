@@ -20,8 +20,11 @@ export default function AnalyticsPage() {
 
   const periods = [
     { id: 'month', label: 'Este Mes' },
+    { id: 'q1', label: 'Quincena 1 (1 - 15)' },
+    { id: 'q2', label: 'Quincena 2 (16 - Fin)' },
+    { id: 'last_15', label: 'Últimos 15 días' },
     { id: 'last_month', label: 'Mes Pasado' },
-    { id: 'year', label: 'Año Actual' },
+    { id: 'year', label: 'Año' },
   ];
 
   const loadAnalytics = useCallback(() => {

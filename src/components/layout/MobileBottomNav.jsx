@@ -1,10 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PieChart, ShoppingBasket, Receipt } from 'lucide-react';
+import { LayoutDashboard, Calendar, PieChart, ShoppingBasket, Receipt } from 'lucide-react';
 
 export default function MobileBottomNav() {
   const navItems = [
     { to: '/', label: 'Inicio', icon: LayoutDashboard },
+    { to: '/calendar', label: 'Calendario', icon: Calendar },
     { to: '/analytics', label: 'Gráficas', icon: PieChart },
     { to: '/pantry', label: 'Despensa', icon: ShoppingBasket },
     { to: '/history', label: 'Historial', icon: Receipt },
